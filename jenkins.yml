@@ -1,0 +1,39 @@
+---
+- hosts: all
+  tasks:
+    - name: Install OpenJDK 11
+      apt:
+        name: openjdk-11-jdk
+        state: present
+    - name: download the jenkins key
+      uri:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        method: GET
+        return_content: yes
+      register: result
+
+    - name: write the key to the keyring
+      copy:
+        src: "{{ result.content }}"
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: flush the keyring
+      command: sudo /usr/bin/update-ca-certificates
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+    - name: Install Jenkins
+      package:
+        name: "{{ nginx_package }}"
+        state: present
+
+    - name: Start Jenkins
+      service:
+        name: jenkins
+        state: started
+
+
