@@ -1,0 +1,91 @@
+---
+- name: Configure Ubuntu Server
+  hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Update package lists
+      apt:
+        update_cache: yes
+
+    - name: Remove existing Docker packages
+      apt:
+        name:
+          - docker
+          - docker-engine
+          - docker.io
+          - containerd
+          - runc
+        state: absent
+
+    - name: Install required packages for Docker installation
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker's official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+        state: present
+
+    - name: Install Docker CE (Community Edition)
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Check the status of Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install default JRE and JDK
+      apt:
+        name:
+          - openjdk-11-jdk
+        state: present
+
+
+    - name: Install Maven
+      get_url:
+        url: https://mirrors.estointernet.in/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+        dest: /tmp/apache-maven-3.6.3-bin.tar.gz
+
+    - name: Extract Maven
+      unarchive:
+        src: /tmp/apache-maven-3.6.3-bin.tar.gz
+        dest: /opt/
+        remote_src: yes
+
+    - name: Add Maven to PATH
+      lineinfile:
+        path: ~/.profile
+        line: "export PATH=\"/opt/apache-maven-3.6.3/bin:{{ ansible_env.PATH }}\""
+      register: maven_path
+      become_user: devops
+
+    - name: Check Maven version
+      command: mvn -version
+      register: maven_version
+      become_user: devops
+      changed_when: false
+
+    - name: Install Jenkins
+      apt:
+        deb: "https://pkg.jenkins.io/debian-stable/binary/jenkins_2.323.1_all.deb"
+
+    - name: Start Jenkins
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
